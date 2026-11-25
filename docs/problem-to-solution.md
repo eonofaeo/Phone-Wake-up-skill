@@ -23,13 +23,13 @@ The working approach was:
 
 ## Run the script
 
-Run setup once to fetch the pinned, checksum-verified scrcpy release and signed Zadig utility. If the phone currently uses MTP, bind its accessory interface to WinUSB using Zadig. Find the phone's USB vendor and product IDs locally in Device Manager under **Properties → Details → Hardware Ids**, then pass those values to the script:
+Run setup once to fetch the pinned, checksum-verified scrcpy release and signed Zadig utility. If the phone currently uses MTP, bind its accessory interface to WinUSB using Zadig. Then run:
 
 ```powershell
-.\scripts\wake-phone-hid.ps1 -VendorId '1234' -ProductId 'ABCD' -Action Repeat
+.\scripts\wake-phone-hid.ps1 -Action Repeat
 ```
 
-The example values are placeholders. Replace them with the four-digit hexadecimal IDs shown on your PC. The script requires exactly one matching present device, checks that its driver service is WinUSB, verifies AOA 2.0 support, then registers and releases each HID report.
+The script scans connected WinUSB USB devices, queries their AOA protocol version, and proceeds only if exactly one confirms AOA 2.0 support. It does not ask for device IDs and does not request or print the USB serial descriptor.
 
 Available actions are `Repeat`, `Wake`, `PowerAndWake`, and `VolumeDown`. A lock-screen PIN is not needed or used. Because OTG provides no screen video, it cannot confirm what appeared on the display.
 
@@ -38,14 +38,14 @@ Available actions are `Repeat`, `Wake`, `PowerAndWake`, and `VolumeDown`. A lock
 The phone's MTP driver may have been replaced by WinUSB during setup. From an elevated PowerShell window, run:
 
 ```powershell
-.\scripts\restore-phone-mtp.ps1 -VendorId '1234' -ProductId 'ABCD'
+.\scripts\restore-phone-mtp.ps1
 ```
 
-Use the same locally supplied IDs. The script verifies that the connected device uses WinUSB and that the installed INF matches the supplied IDs. It asks for confirmation before removing the package and rescanning devices. Reconnect the phone if MTP does not return.
+The recovery script discovers the connected WinUSB device, verifies its installed INF against the hardware IDs Windows provides locally, asks for confirmation before removing the package, then rescans devices. Disconnect unrelated WinUSB devices if the script reports ambiguity. Reconnect the phone if MTP does not return.
 
 ## Privacy
 
-This account intentionally omits the phone's model, personal name, phone number, USB serial, and model-specific USB identifiers. The scripts accept USB vendor/product IDs as local parameters and contain no fixed serial. The HID script does not request the USB serial descriptor; Windows Plug and Play device paths are used at runtime for device lookup. Do not publish personally identifying device information in documentation or command transcripts.
+This account omits the phone's model, personal name, USB serial, and model-specific USB identifiers. The scripts do not contain fixed device IDs. Windows Plug and Play supplies vendor/product IDs locally at runtime for automatic discovery; the HID script does not request the USB serial descriptor or print device IDs. Do not publish personally identifying device information in documentation or command transcripts.
 
 ## Sources
 

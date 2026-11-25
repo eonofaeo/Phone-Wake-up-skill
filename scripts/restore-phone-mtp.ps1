@@ -1,13 +1,5 @@
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
-param(
-    [Parameter(Mandatory = $true)]
-    [ValidatePattern('^[0-9A-Fa-f]{4}$')]
-    [string]$VendorId,
-
-    [Parameter(Mandatory = $true)]
-    [ValidatePattern('^[0-9A-Fa-f]{4}$')]
-    [string]$ProductId
-)
+param()
 
 $ErrorActionPreference = 'Stop'
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -16,24 +8,42 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     throw 'Run this recovery script from an elevated PowerShell window.'
 }
 
-$devicePattern = '^USB\\VID_' + $VendorId + '&PID_' + $ProductId + '\\[^\\]+$'
-$matchingPhones = @(Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -match $devicePattern })
-if ($matchingPhones.Count -ne 1) { throw "Expected exactly one connected phone USB device; found $($matchingPhones.Count)." }
-$deviceId = $matchingPhones[0].InstanceId
-$service = (Get-PnpDeviceProperty -InstanceId $deviceId -KeyName 'DEVPKEY_Device_Service').Data
-if ($service -ne 'WinUSB') { throw "The connected phone is not using WinUSB (detected: $service)." }
-$publishedInf = (Get-PnpDeviceProperty -InstanceId $deviceId -KeyName 'DEVPKEY_Device_DriverInfPath').Data
-if ($publishedInf -notmatch '^oem[0-9]+\.inf$') { throw "Unexpected published driver INF: $publishedInf" }
+# Discover the connected WinUSB device and read its hardware IDs locally.
+$candidates = @{}
+foreach ($pnpDevice in (Get-PnpDevice -PresentOnly)) {
+    $instanceId = [string]$pnpDevice.InstanceId
+    if ($instanceId -notmatch '^USB\\VID_([0-9A-Fa-f]{4})&PID_([0-9A-Fa-f]{4})\\') { continue }
+    $vendorId = $Matches[1].ToUpperInvariant()
+    $productId = $Matches[2].ToUpperInvariant()
+    $key = $vendorId + ':' + $productId
+    if ($candidates.ContainsKey($key)) { continue }
+
+    $service = $null
+    try {
+        $service = (Get-PnpDeviceProperty -InstanceId $instanceId -KeyName 'DEVPKEY_Device_Service' -ErrorAction Stop).Data
+    } catch {}
+    if ($service -eq 'WinUSB') {
+        $candidates[$key] = [pscustomobject]@{
+            InstanceId = $instanceId
+            HardwareId = "VID_$vendorId&PID_$productId"
+        }
+    }
+}
+if ($candidates.Count -eq 0) { throw 'No connected WinUSB USB device was found.' }
+if ($candidates.Count -gt 1) { throw 'Multiple WinUSB USB devices are connected. Disconnect unrelated devices and retry.' }
+
+$device = @($candidates.Values)[0]
+$publishedInf = (Get-PnpDeviceProperty -InstanceId $device.InstanceId -KeyName 'DEVPKEY_Device_DriverInfPath').Data
+if ($publishedInf -notmatch '^oem[0-9]+\.inf$') { throw 'The connected device has an unexpected published driver package.' }
 $infPath = Join-Path $env:windir ("INF\$publishedInf")
-if (-not (Test-Path -LiteralPath $infPath)) { throw "Driver INF not found: $infPath" }
-$expectedHardwareId = 'VID_' + $VendorId + '&PID_' + $ProductId
-if ((Get-Content -LiteralPath $infPath -Raw) -notmatch [regex]::Escape($expectedHardwareId)) {
-    throw 'The installed INF does not match the supplied USB IDs; refusing removal.'
+if (-not (Test-Path -LiteralPath $infPath)) { throw 'The connected device driver INF was not found.' }
+if ((Get-Content -LiteralPath $infPath -Raw) -notmatch [regex]::Escape($device.HardwareId)) {
+    throw 'The installed INF does not match the connected device; refusing removal.'
 }
 
-if ($PSCmdlet.ShouldProcess("USB $VendorId`:$ProductId ($publishedInf)", 'Remove the phone WinUSB driver package and rescan devices')) {
+if ($PSCmdlet.ShouldProcess("the connected phone's matching WinUSB package", 'Remove the driver package and rescan devices')) {
     & pnputil.exe /delete-driver $publishedInf /uninstall
-    if ($LASTEXITCODE -ne 0) { throw 'Windows could not remove the phone driver package.' }
+    if ($LASTEXITCODE -ne 0) { throw 'Windows could not remove the driver package.' }
     & pnputil.exe /scan-devices
     if ($LASTEXITCODE -ne 0) { throw 'Windows removed the package but the device rescan failed.' }
     Write-Output 'WinUSB package removed. Reconnect the phone if MTP does not return.'

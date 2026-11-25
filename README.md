@@ -4,13 +4,13 @@ A Windows PowerShell tool and reusable Codex skill for sending wake and hardware
 
 ## What worked
 
-The phone was connected to a Windows PC, but Android Debug Bridge (ADB) was unavailable and the display could not be used to approve debugging. The solution used Android Open Accessory 2.0 (AOA 2.0) HID input over USB. After binding the phone's accessory interface to WinUSB with Zadig, a PowerShell script sent Power, Wake, and Volume Down reports. The user confirmed the method worked. See [the troubleshooting notes](docs/problem-to-solution.md).
+ADB was unavailable and the phone's display could not be used to approve debugging. The working route used Android Open Accessory 2.0 HID input over USB. After binding the phone's accessory interface to WinUSB with Zadig, a PowerShell script sent Power, Wake, and Volume Down reports. The user confirmed the method worked. See [the troubleshooting notes](docs/problem-to-solution.md).
 
 ## Requirements
 
 - Windows 10 or 11, PowerShell, and a data-capable USB cable.
 - A phone that supports Android Open Accessory 2.0 HID.
-- The phone's USB vendor ID and product ID, entered locally when running the scripts.
+- WinUSB bound to the phone's USB accessory interface.
 - ADB access is not required. A lock-screen PIN is not used or requested.
 
 ## Setup
@@ -24,39 +24,37 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 Setup downloads the pinned scrcpy release, checks its SHA-256, and downloads Zadig only if its Authenticode signature is valid.
 
-If the phone is using MTP, use Zadig's **Options → List All Devices** to select its accessory interface and bind that interface to **WinUSB**. Check the selected device in Zadig before replacing its driver; this can temporarily interrupt MTP file transfer.
-
-Find the phone's USB vendor and product IDs in Windows Device Manager under the relevant USB device's **Properties → Details → Hardware Ids**. Enter those values locally; do not add serial numbers or personally identifying details to the repository.
+If the phone is still using MTP, use Zadig's **Options → List All Devices** to select its accessory interface and bind that interface to **WinUSB**. Check the selected device in Zadig before replacing its driver; this can temporarily interrupt MTP file transfer. This driver selection is the only device-specific setup step.
 
 ## Send input
 
-Pass the four-digit hexadecimal vendor and product IDs you found on your own PC:
+Run the script without entering device IDs:
 
 ```powershell
-.\scripts\wake-phone-hid.ps1 -VendorId '1234' -ProductId 'ABCD' -Action Repeat
+.\scripts\wake-phone-hid.ps1 -Action Repeat
 ```
 
-Replace the example IDs with the values shown on your PC. Available actions are `Repeat`, `Wake`, `PowerAndWake`, and `VolumeDown`. `Repeat` sends a short Power press, System Wake Up, and one Volume Down press.
+The script scans connected WinUSB devices, checks which one confirms Android Open Accessory 2.0 support, and proceeds only when it finds exactly one. It does not print device IDs or read the USB serial descriptor. Available actions are `Repeat`, `Wake`, `PowerAndWake`, and `VolumeDown`. `Repeat` sends a short Power press, System Wake Up, and one Volume Down press.
 
 ## Restore MTP
 
-If you replaced the phone's driver with WinUSB, run the recovery script from an elevated PowerShell window with the same local IDs:
+If you replaced the phone's driver with WinUSB, open an elevated PowerShell window and run:
 
 ```powershell
-.\scripts\restore-phone-mtp.ps1 -VendorId '1234' -ProductId 'ABCD'
+.\scripts\restore-phone-mtp.ps1
 ```
 
-The script checks the connected device and driver INF, then asks before removing the matching WinUSB package and rescanning devices.
+The recovery script finds the connected WinUSB device automatically, checks its driver INF, and asks before removing the matching package and rescanning devices. Disconnect other WinUSB USB devices first if the script reports ambiguity.
 
 ## Privacy
 
-The repository contains no device serial number, phone number, personally assigned device name, or model-specific USB identifiers. The scripts require USB vendor/product IDs as command-line inputs. They do not contain a fixed serial or request the USB serial descriptor; Windows Plug and Play device paths are used at runtime for device lookup. Avoid sharing command history or logs if they contain device IDs.
+The repository contains no device serial number, personally assigned device name, or model-specific USB identifiers. At runtime, Windows Plug and Play supplies the USB vendor/product IDs needed for device discovery; these are not hard-coded, printed, or saved. The HID script does not request the USB serial descriptor. Avoid sharing system logs or screenshots that might show device details.
 
 ## Files
 
 - `SKILL.md`: reusable Codex skill instructions.
 - `setup.ps1`: downloads and verifies local tools.
-- `scripts/wake-phone-hid.ps1`: sends AOA 2.0 HID input.
-- `scripts/restore-phone-mtp.ps1`: guarded driver recovery.
+- `scripts/wake-phone-hid.ps1`: auto-detects an AOA 2.0 phone and sends HID input.
+- `scripts/restore-phone-mtp.ps1`: guarded automatic driver recovery.
 - `docs/problem-to-solution.md`: troubleshooting account and recovery notes.
 - `references/`: implementation sources and license.

@@ -50,7 +50,7 @@ The script checks the connected device and driver INF, then asks before removing
 
 ## Privacy
 
-The repository contains no device serial number, phone number, personally assigned device name, or model-specific USB identifiers. The scripts require USB vendor/product IDs as command-line inputs and do not read, display, or save the phone's USB serial. Avoid sharing command history or logs if they contain device IDs.
+The repository contains no device serial number, phone number, personally assigned device name, or model-specific USB identifiers. The scripts require USB vendor/product IDs as command-line inputs. They do not contain a fixed serial or request the USB serial descriptor; Windows Plug and Play device paths are used at runtime for device lookup. Avoid sharing command history or logs if they contain device IDs.
 
 ## Files
 

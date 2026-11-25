@@ -45,7 +45,7 @@ Use the same locally supplied IDs. The script verifies that the connected device
 
 ## Privacy
 
-This account intentionally omits the phone's model, personal name, phone number, USB serial, and model-specific USB identifiers. The scripts accept USB vendor/product IDs as local parameters and do not read, print, or save the phone's USB serial. Do not publish personally identifying device information in documentation or command transcripts.
+This account intentionally omits the phone's model, personal name, phone number, USB serial, and model-specific USB identifiers. The scripts accept USB vendor/product IDs as local parameters and contain no fixed serial. The HID script does not request the USB serial descriptor; Windows Plug and Play device paths are used at runtime for device lookup. Do not publish personally identifying device information in documentation or command transcripts.
 
 ## Sources
 

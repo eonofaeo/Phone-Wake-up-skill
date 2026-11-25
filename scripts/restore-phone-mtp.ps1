@@ -31,7 +31,7 @@ if ((Get-Content -LiteralPath $infPath -Raw) -notmatch [regex]::Escape($expected
     throw 'The installed INF does not match the supplied USB IDs; refusing removal.'
 }
 
-if ($PSCmdlet.ShouldProcess("$deviceId ($publishedInf)", 'Remove the phone WinUSB driver package and rescan devices')) {
+if ($PSCmdlet.ShouldProcess("USB $VendorId`:$ProductId ($publishedInf)", 'Remove the phone WinUSB driver package and rescan devices')) {
     & pnputil.exe /delete-driver $publishedInf /uninstall
     if ($LASTEXITCODE -ne 0) { throw 'Windows could not remove the phone driver package.' }
     & pnputil.exe /scan-devices

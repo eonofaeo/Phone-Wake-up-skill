@@ -39,4 +39,4 @@ if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notm
 
 Write-Output "Verified scrcpy $scrcpyVersion archive SHA-256: $actualHash"
 Write-Output "Verified Zadig publisher: $($signature.SignerCertificate.Subject)"
-Write-Output 'Setup is ready. Use Zadig to bind the phone accessory interface to WinUSB, then run scripts\wake-phone-hid.ps1 with the locally identified USB vendor and product IDs.'
+Write-Output 'Setup is ready. Use Zadig to bind the phone accessory interface to WinUSB, then run scripts\wake-phone-hid.ps1 for automatic detection.'
